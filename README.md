@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
   <boody>
     <h1>Донник Иван</h1>
     <h2>QA Junior/Тестировщик</h2>
