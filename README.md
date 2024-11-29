@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
   <boody>
     <h1>Донник Иван</h1>
