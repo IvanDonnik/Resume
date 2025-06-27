@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Интерактивный букет тюльпанов</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            font-family: sans-serif;
+            overflow: hidden;
+        }
+
+        .card-container {
+            position: relative;
+            width: 300px;
+            height: 500px;
+            perspective: 1000px;
+            overflow: visible;
+            cursor: grab;
+            transform-style: preserve-3d;
+            border-radius: 10px;
+        }
+
+        .card-content {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.3s ease-out;
+        }
+
+        .layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform-origin: center center;
+        }
+
+        .background-layer {
+            z-index: 0; /* Самый дальний слой */
+            background-image: url('table.png');
+            background-size: cover;
+            background-position: center;
+            /* Отодвинем фон назад */
+            transform: scale(1.0) translateZ(-180px); /* Фон на -180px */
+            border-radius: 10px;
+        }
+
+        .glow-layer {
+            z-index: 1; /* Слой свечения сразу за фоном */
+            background-image: url('glow.png');
+            background-size: cover; /* Покрывает весь слой */
+            background-repeat: no-repeat;
+            background-position: center;
+            pointer-events: none;
+            /* Сдвинем свечение вперед на 10px от фона */
+            transform: translateZ(-170px); /* Теперь свечение на -170px */
+        }
+
+        .flower-layer {
+            z-index: 2; /* Букет находится перед свечением */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .flower-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            transform-origin: center center;
+        }
+
+        .text-layer {
+            z-index: 3; /* Текст на самом верху */
+            display: flex;
+            justify-content: center;
+            align-items: flex-end; /* Выравниваем по нижнему краю */
+            padding-bottom: 1110; /* Регулировка вертикального положения текста */
+            color: white;
+            font-size: 2em;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0,0,0,0.5);
+            pointer-events: none;
+            /* Добавляем 3D позиционирование для текста */
+            transform: translateZ(165px); /* Примерная глубина текста */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card-container">
+        <div class="card-content">
+            <div class="layer background-layer"></div>
+            <div class="layer glow-layer"></div>
+            <div class="layer flower-layer">
+                <img class="flower-image" src="tulip/тульпы_000.png" alt="Букет тюльпанов">
+            </div>
+            <div class="layer text-layer">Тюльпаны</div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const cardContainer = document.querySelector('.card-container');
+            const cardContent = document.querySelector('.card-content');
+            const backgroundLayer = document.querySelector('.background-layer');
+            const flowerLayer = document.querySelector('.flower-layer');
+            const flowerImage = flowerLayer.querySelector('.flower-image');
+            const glowLayer = document.querySelector('.glow-layer');
+            const textLayer = document.querySelector('.text-layer'); // Получаем ссылку на текстовый слой
+
+            // --- КОНФИГУРАЦИЯ ---
+            const totalFrames = 60;
+            const framesPath = 'tulip/тульпы_';
+            const frameExtension = '.png';
+            const sensitivity = 10;
+            const maxTiltX = 15;
+            const maxTiltY = 30;
+
+            // Параметры для фона (эффект параллакса)
+            const backgroundTiltFactor = 0.8; // Коэффициент параллакса для фона
+            const backgroundDepth = 80; // Отодвинут назад
+
+            // Параметры для свечения
+            const glowTiltFactor = 0.8; // Коэффициент параллакса для свечения (теперь такой же, как у фона)
+            const glowZOffset = -60; // На 10px ближе к зрителю, чем фон (-180px)
+
+            // Параметры для текста
+            const textTiltFactor = 0.9; // Коэффициент параллакса для текста (немного больше, чтобы он выделялся)
+            const textDepth = -10; // Глубина текста
+
+            // --- КОНЕЦ КОНФИГУРАЦИИ ---
+
+            let currentFrame = 0;
+            let isDragging = false;
+            let startX = 0;
+            let startRotation = 0;
+
+            // Устанавливаем начальные трансформации для слоев
+            backgroundLayer.style.transform = `scale(1.0) translateZ(-${backgroundDepth}px)`;
+            glowLayer.style.transform = `translateZ(${glowZOffset}px)`;
+            textLayer.style.transform = `translateZ(${textDepth}px)`; // Устанавливаем начальную глубину текста
+
+            function setFrame(frameIndex) {
+                const validFrameIndex = frameIndex % totalFrames;
+                const frameNumber = String(validFrameIndex + 1).padStart(3, '0');
+                flowerImage.src = `${framesPath}${frameNumber}${frameExtension}`;
+            }
+
+            cardContainer.addEventListener('mousemove', (e) => {
+                const rect = cardContainer.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                const horizontalOffset = x - rect.width / 2;
+                const maxOffset = rect.width / 2;
+                const rotationY = (horizontalOffset / maxOffset) * maxTiltY;
+
+                const verticalOffset = y - rect.height / 2;
+                const maxVerticalOffset = rect.height / 2;
+                const rotationX = (verticalOffset / maxVerticalOffset) * -maxTiltX;
+
+                cardContent.style.transform = `perspective(1000px) rotateX(${rotationX}deg) rotateY(${rotationY}deg)`;
+
+                // Параллакс для фона
+                const backgroundRotationY = rotationY * backgroundTiltFactor;
+                const backgroundRotationX = rotationX * backgroundTiltFactor;
+                backgroundLayer.style.transform = `scale(1.0) translateZ(-${backgroundDepth}px) rotateX(${backgroundRotationX}deg) rotateY(${backgroundRotationY}deg)`;
+
+                // Параллакс для свечения
+                glowLayer.style.transform = `translateZ(${glowZOffset}px) rotateX(${rotationX * glowTiltFactor}deg) rotateY(${rotationY * glowTiltFactor}deg)`;
+
+                // Параллакс для текста
+                const textRotationY = rotationY * textTiltFactor;
+                const textRotationX = rotationX * textTiltFactor;
+                textLayer.style.transform = `translateZ(${textDepth}px) rotateX(${textRotationX}deg) rotateY(${textRotationY}deg)`;
+            });
+
+            cardContainer.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.clientX;
+                startRotation = currentFrame;
+                cardContainer.style.cursor = 'grabbing';
+                cardContent.style.userSelect = 'none';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+
+                const deltaX = e.clientX - startX;
+                const frameChange = Math.round(deltaX / sensitivity);
+                currentFrame = (startRotation + frameChange) % totalFrames;
+
+                if (currentFrame < 0) {
+                    currentFrame += totalFrames;
+                }
+
+                setFrame(currentFrame);
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+                cardContainer.style.cursor = 'grab';
+                cardContent.style.userSelect = '';
+            });
+
+            setFrame(currentFrame);
+        });
+    </script>
+
+</body>
+</html>
